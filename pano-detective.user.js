@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Pano Detective
-// @namespace    https://greasyfork.org/users/1179204
+// @namespace    vs
 // @version      2.4.8
 // @description  Find the exact time a Google Street View image was taken (default coverage)
 // @author       KaKa
