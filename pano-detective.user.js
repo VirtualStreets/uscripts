@@ -1,38 +1,11 @@
 // ==UserScript==
 // @name         Pano Detective
-// @version      2.3.5
+// @namespace    https://greasyfork.org/users/1179204
+// @version      2.4.8
 // @description  Find the exact time a Google Street View image was taken (default coverage)
 // @author       KaKa
-// @match        *://maps.google.com/*
-// @match        *://*.google.com/maps/*
-// @match        *://*.google.ru/maps/*
-// @match        *://*.google.de/maps/*
-// @match        *://*.google.fr/maps/*
-// @match        *://*.google.ca/maps/*
-// @match        *://*.google.it/maps/*
-// @match        *://*.google.at/maps/*
-// @match        *://*.google.pl/maps/*
-// @match        *://*.google.se/maps/*
-// @match        *://*.google.ro/maps/*
-// @match        *://*.google.cz/maps/*
-// @match        *://*.google.sk/maps/*
-// @match        *://*.google.nl/maps/*
-// @match        *://*.google.ch/maps/*
-// @match        *://*.google.si/maps/*
-// @match        *://*.google.co.uk/maps/*
-// @match        *://*.google.co.jp/maps/*
-// @match        *://*.google.co.id/maps/*
-// @match        *://*.google.co.in/maps/*
-// @match        *://*.google.co.kr/maps/*
-// @match        *://*.google.co.za/maps/*
-// @match        *://*.google.co.th/maps/*
-// @match        *://*.google.com.hk/maps/*
-// @match        *://*.google.com.br/maps/*
-// @match        *://*.google.com.mx/maps/*
-// @match        *://*.google.com.ph/maps/*
-// @match        *://*.google.com.ar/maps/*
-// @match        *://*.google.com.co/maps/*
-// @match        *://*.google.com.tw/maps/*
+// @include      *://maps.google.com/*
+// @include      *://*.google.*/maps/*
 // @exclude      https://ogs.google.com
 // @exclude      https://accounts.google.com
 // @exclude      https://clients5.google.com
@@ -45,6 +18,7 @@
 // @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @connect      google.com
 // @license      BSD
 // @downloadURL  https://raw.githubusercontent.com/VirtualStreets/uscripts/refs/heads/main/pano-detective.user.js
 // @updateURL    https://raw.githubusercontent.com/VirtualStreets/uscripts/refs/heads/main/pano-detective.user.js
@@ -925,12 +899,17 @@ div[class^="result-list_listItemWrapper__"] .mwstmm-settings-option {
         const worldsize = data[1][0][2][2][0];
         const history =data[1][0][5][0][8];
         const links= data[1][0][5][0][3][0]
-        const heading=data[1][0][5][0][1][2];
+
 
         const date = new Date(year, month - 1);
         const formattedDate = date.toLocaleString('default', { month: 'short', year: 'numeric' });
 
-        let region, locality, road, country, altitude;
+        let heading, region, locality, road, country, altitude;
+        try{
+            heading=data[1][0][5][0][1][2][0];
+        }catch(e){
+            heading=0
+        }
         try {
             country = data[1][0][5][0][1][4];
             if (['TW', 'HK', 'MO'].includes(country)) {
@@ -984,7 +963,6 @@ div[class^="result-list_listItemWrapper__"] .mwstmm-settings-option {
         const tagFields = [formattedDate, `${year}-${month}`, year, months[month-1], full_months[month-1],
                            country, region, locality, road,
                            generation,camera, altitude?altitude.toFixed(2)+'m':null, isNewRoad].filter(Boolean);
-
         return {
             lat,
             lng,
@@ -1013,16 +991,16 @@ div[class^="result-list_listItemWrapper__"] .mwstmm-settings-option {
         if (worldsize === 6656) {
             const dateStr = date.toISOString().slice(0, 7);
             const gen2Countries = new Set(['AU', 'BR', 'CA', 'CL', 'JP', 'GB', 'IE', 'NZ', 'MX', 'RU', 'US', 'IT', 'DK', 'GR', 'RO',
-                                           'PL', 'CZ', 'CH', 'SE', 'FI', 'BE', 'LU', 'NL', 'ZA', 'SG', 'TW', 'HK', 'MO', 'MC', 'SM',
-                                           'AD', 'IM', 'JE', 'FR', 'DE', 'ES', 'PT', 'SJ']);
+                                           'PL', 'CZ', 'CH', 'SE', 'FI', 'BE', 'LU', 'NL', 'ZA', 'SG', 'TW', 'HK', 'MO', 'MC', 'NO',
+                                           'SM', 'AD', 'IM', 'JE', 'FR', 'DE', 'ES', 'PT', 'SJ']);
             const gen3Dates = {
                 'BD': '2021-04', 'EC': '2022-03', 'FI': '2020-09', 'IN': '2021-10', 'LK': '2021-02', 'KH': '2022-10',
-                'LB': '2021-05', 'NG': '2021-06', 'ST': '2024-02', 'US': '2019-01', 'VN':'2021-01',
+                'LB': '2021-05', 'NG': '2021-06', 'ST': '2024-02', 'US': '2019-01', 'VN':'2021-01', 'ES':'2023-01'
             };
-
-            if (dateStr >= (gen3Dates[country] || '9999-99')) {
-                if(country === 'US' && lat > 52)return 'BadCam'
+            if(dateStr >= '2022-01') return 'BadCam'
+            if (dateStr >= gen3Dates[country]) {
                 if(country!='US')return 'BadCam'
+                if(country === 'US' && lat > 52)return 'BadCam'
             }
 
             if (gen2Countries.has(country) && dateStr <= '2011-11') {
@@ -1533,19 +1511,35 @@ div[class^="result-list_listItemWrapper__"] .mwstmm-settings-option {
             }
         })
         detectButton.addEventListener("click",async function() {
-            let dateSpan = document.querySelector('span.lchoPb');
-            if (!dateSpan){
-                dateSpan = document.querySelector('span.mqX5ad');
-                if(!dateSpan){
-                    dateSpan = document.querySelector('div.mqX5ad');
-                    if(!dateSpan)
-                    {
-                        dateSpan = document.querySelector('div.lchoPb');
-                    }
-                }
-            }
-            const logoSpan=document.querySelector('span.ilzTS')
-            const logoDiv=document.querySelector('div.p4x6kc')
+            const date_selectors = [
+                'span.lchoPb',
+                'span.mqX5ad',
+                'div.mqX5ad',
+                'div.lchoPb',
+                'div.W0fu2b'
+            ];
+
+            const logo_span_selectors = [
+                'span.ilzTS',
+                'span.OVC7id'
+            ];
+
+            const logo_div_selectors = [
+                'div.p4x6kc',
+                'div.hz7Obe'
+            ];
+
+            const dateSpan = date_selectors
+            .map(selector => document.querySelector(selector))
+            .find(el => el !== null);
+
+            const logoSpan = logo_span_selectors
+            .map(selector => document.querySelector(selector))
+            .find(el => el !== null);
+
+            const logoDiv = logo_div_selectors
+            .map(selector => document.querySelector(selector))
+            .find(el => el !== null);
 
             if (dateSpan){
                 dateSpan.innerHTML='loading...'
@@ -1830,7 +1824,7 @@ div[class^="result-list_listItemWrapper__"] .mwstmm-settings-option {
             return locationQueryCache.get(queryKey);
         }
 
-        const params = new URLSearchParams({ lat, lng, radius, year, month }).toString();
+        const params = new URLSearchParams({ lat, lng, radius, year, month, count:1 }).toString();
         const url = `https://vs-update-map.netlify.app/.netlify/functions/queryByLocation?${params}`;
 
         const response = await new Promise((resolve, reject) => {
@@ -1859,7 +1853,7 @@ div[class^="result-list_listItemWrapper__"] .mwstmm-settings-option {
     }
 
     async function checkUpdateTypes() {
-        const { country, region, year, month } = LOCATION;
+        const { country, region, year, month, generation } = LOCATION;
         const queryKey = getTypeKey(LOCATION);
 
         if (typeQueryCache.has(queryKey)) {
@@ -1930,7 +1924,7 @@ div[class^="result-list_listItemWrapper__"] .mwstmm-settings-option {
             }
 
 
-            const [currentLink, typeupdate,fetchedCountryName] = await Promise.all([
+            const [currentLink, typeupdate, fetchedCountryName] = await Promise.all([
                 getShortUrl(),
                 CONFIG.FULL_CHECK?checkUpdateTypes():null,
                 LOCATION.generation !== 'ari' ? getCountryName(LOCATION.country || 'Unknown') : Promise.resolve(countryName)
@@ -1967,7 +1961,7 @@ div[class^="result-list_listItemWrapper__"] .mwstmm-settings-option {
                 ...activeTypes,
                 !LOCATION.history ? ':newroad:' : '',
                 genupdate || '',
-                (LOCATION.generation=='Gen4' && (['IN','PR'].includes(LOCATION.country)))? ':SmallCam:': '',
+                (LOCATION.generation=='Gen4' && (['IN','PR'].includes(LOCATION.country)))? ':smallcam:': '',
                 `${full_months[LOCATION.month - 1]} ${LOCATION.year}`,
                 `${position_word} ${LOCATION.locality || LOCATION.road || ''}${(LOCATION.locality || LOCATION.road) ? ', ' : ''}${LOCATION.region}, ${fetchedCountryName}`,
                 currentLink || `https://www.google.com/maps/@?api=1&map_action=pano&pano=${LOCATION.panoId}`
