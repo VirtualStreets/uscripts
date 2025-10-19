@@ -1,0 +1,1 @@
+- ### [pano detective (click)](https://raw.githubusercontent.com/VirtualStreets/uscripts/refs/heads/main/pano-detective.user.js)
